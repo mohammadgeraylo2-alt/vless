@@ -19,6 +19,9 @@ ADMIN_ID = int(os.environ["ADMIN_ID"])
 XRAY_MANAGE_URL = os.environ["XRAY_MANAGE_URL"]
 XRAY_MANAGE_SECRET = os.environ["XRAY_MANAGE_SECRET"]
 
+# آدرس /usage از روی همون XRAY_MANAGE_URL ساخته می‌شه (که به /create ختم می‌شه)
+XRAY_USAGE_URL = XRAY_MANAGE_URL.rsplit("/", 1)[0] + "/usage"
+
 ASK_GB, ASK_DAYS = range(2)
 
 
@@ -31,7 +34,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await update.message.reply_text(
         "سلام 👋\n"
-        "برای ساخت کانفیگ VLESS دستور /getconfig رو بزن."
+        "برای ساخت کانفیگ VLESS دستور /getconfig رو بزن.\n"
+        "برای دیدن حجم باقی‌مونده دستور /usage رو بزن."
     )
 
 
@@ -99,6 +103,53 @@ async def ask_days(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
+async def usage_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update):
+        return
+
+    await update.message.reply_text("⏳ در حال گرفتن گزارش مصرف...")
+
+    try:
+        resp = requests.post(
+            XRAY_USAGE_URL,
+            json={"secret": XRAY_MANAGE_SECRET},
+            timeout=20,
+        )
+    except requests.RequestException as e:
+        await update.message.reply_text(f"❌ خطا در ارتباط با سرور: {e}")
+        return
+
+    if resp.status_code != 200:
+        await update.message.reply_text(
+            f"❌ خطا از سمت سرور (status {resp.status_code}):\n{resp.text[:500]}"
+        )
+        return
+
+    try:
+        data = resp.json()
+        clients = data.get("clients", [])
+    except ValueError:
+        await update.message.reply_text("❌ پاسخ سرور نامعتبر بود.")
+        return
+
+    if not clients:
+        await update.message.reply_text("هیچ کاربر فعالی ثبت نشده.")
+        return
+
+    lines = ["📊 گزارش مصرف کاربران:\n"]
+    for c in clients:
+        status = "⚠️ منقضی‌شده" if c["expired"] else "✅ فعال"
+        lines.append(
+            f"{status}\n"
+            f"مصرف‌شده: {c['used_gb']} / {c['gb']} گیگ\n"
+            f"باقی‌مانده: {c['remaining_gb']} گیگ\n"
+            f"انقضا: {c['days_expires']}\n"
+            f"UUID: `{c['uuid'][:8]}...`\n"
+            "―――――――"
+        )
+    await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+
+
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("لغو شد.")
     return ConversationHandler.END
@@ -117,8 +168,10 @@ def main():
     )
 
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("usage", usage_command))
     application.add_handler(conv_handler)
 
+    
     application.run_polling()
 
 
