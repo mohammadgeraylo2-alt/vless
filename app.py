@@ -199,15 +199,17 @@ async def revoke_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if text in revoke_map:
         target_uuid = revoke_map[text]
-    elif len(text) >= 4:
-        # کاربر به‌جای عدد ردیف، بخشی از UUID رو فرستاده — همینو مستقیم به
-        # سرور می‌فرستیم، خودِ سرور با پیشوند UUID پیدا می‌کنه.
-        target_uuid = text
     else:
-        await update.message.reply_text(
-            "عدد نامعتبره. یکی از شماره‌های لیست (یا خودِ UUID) رو بفرست، یا /cancel."
-        )
-        return ASK_REVOKE_CHOICE
+        # کاربر ممکنه بخشی از UUID رو با «...» انتهایی (که فقط برای نمایش
+        # کوتاه‌شده تو لیست تلگرامه) کپی کرده باشه؛ همچین چیزی رو پاک می‌کنیم.
+        cleaned = text.strip().rstrip(".").strip()
+        if len(cleaned) >= 4:
+            target_uuid = cleaned
+        else:
+            await update.message.reply_text(
+                "عدد نامعتبره. یکی از شماره‌های لیست (یا خودِ UUID، بدون سه‌نقطه) رو بفرست، یا /cancel."
+            )
+            return ASK_REVOKE_CHOICE
 
     await update.message.reply_text("⏳ در حال حذف...")
 
