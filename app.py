@@ -93,6 +93,7 @@ async def ask_days(update: Update, context: ContextTypes.DEFAULT_TYPE):
         expires = data.get("expires", "-")
         resp_gb = data.get("gb", gb)
         resp_days = data.get("days", days)
+        status_link = data.get("status_link")
     except (ValueError, KeyError) as e:
         await update.message.reply_text(f"❌ پاسخ سرور نامعتبر بود: {e}")
         return ConversationHandler.END
@@ -103,6 +104,8 @@ async def ask_days(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"اعتبار: {resp_days} روز (تا {expires})\n\n"
         f"`{vless_link}`"
     )
+    if status_link:
+        message += f"\n\n📊 چک حجم/انقضا:\n{status_link}"
     await update.message.reply_text(message, parse_mode="Markdown")
     return ConversationHandler.END
 
