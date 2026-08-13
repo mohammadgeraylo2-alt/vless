@@ -485,13 +485,10 @@ async def getconfig_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def ask_gb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
-    try:
-    gb_value = float(text)
-    assert gb_value > 0
-except (ValueError, AssertionError):
-    await update.message.reply_text("لطفاً یه عدد مثبت بفرست (مثلاً 0.5).")
+    if not text.isdigit():
+    await update.message.reply_text("لطفاً فقط عدد بفرست. چند گیگ؟")
     return ASK_GB
-context.user_data["gb"] = gb_value
+context.user_data["gb"] = int(text)
     await update.message.reply_text("چند روز اعتبار داشته باشه؟ (فقط عدد)")
     return ASK_DAYS
 
